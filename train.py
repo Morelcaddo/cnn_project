@@ -1,3 +1,4 @@
+
 import os
 
 import torch
@@ -9,18 +10,23 @@ from tqdm import tqdm  # 训练进度条
 
 from model.cnn import CNN
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_transform = transforms.Compose([
-    transforms.Resize([224, 224]),
+    transforms.Resize((64, 64)),
+    transforms.Grayscale(num_output_channels=1),
+    transforms.RandomAffine(0, shear=10, scale=(0.8, 1.2)),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Normalize(mean=[0.5], std=[0.5])
+
 ])
 
 test_transform = transforms.Compose([
-    transforms.Resize([224, 224]),
+    transforms.Resize((64, 64)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Normalize(mean=[0.5], std=[0.5])
 ])
 
 # 加载测试集和训练集
@@ -31,9 +37,9 @@ test_set = datasets.ImageFolder(root=os.path.join(r"data", 'test'),
                                 transform=test_transform)
 
 # train_set传入的训练集，batch批次训练的图片数量，num_workers数据加载多线程， shuffle为True代表打乱加载数据
-train_loader = DataLoader(train_set, batch_size=32, num_workers=0, shuffle=True)
+train_loader = DataLoader(train_set, batch_size=26, num_workers=4, shuffle=True)
 
-test_loader = DataLoader(train_set, batch_size=32, num_workers=0, shuffle=True)
+test_loader = DataLoader(test_set, batch_size=26, num_workers=4, shuffle=True)
 
 
 def train(model, trainLoader, criterion, optimizer, num_epochs):
@@ -80,15 +86,11 @@ def evaluate(model, testLoader, criterion):
     return accuracy
 
 
-def save_model(model, save_path):
-    torch.save(model.state_dict(), save_path)
-
-
 if __name__ == "__main__":
-    num_epochs = 10
-    learning_rate = 0.001
-    num_classes = 62
-    save_path = r"model_pth\best.pth"
+    num_epochs = 20
+    learning_rate = 0.0001
+    num_classes = 26
+    save_path = r"model_pth\best5.0_20.pth"
     model = CNN(num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
